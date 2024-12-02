@@ -22,10 +22,10 @@ pub fn rect(cnv: &mut Canvas, a: &Vec2, b: &Vec2, color: u32) {
 pub fn sdf_circle(cnv: &mut Canvas, center: &Vec2, radius: i32, color: u32) {
     let s_center = FrameBufferPoint::from_ndc_vec(center, cnv.fb.width, cnv.fb.height);
 
-    for y in s_center.x - radius..s_center.x + radius {
-        for x in s_center.y - radius..s_center.y + radius {
+    for x in s_center.x - radius..s_center.x + radius {
+        for y in s_center.y - radius..s_center.y + radius {
             let p_vec = Vec2::new(x as f32, y as f32);
-            let sdf = (p_vec.clone() - center).length() - radius as f32;
+            let sdf = (p_vec.clone() - &s_center.to_vec2()).length() - radius as f32;
             if sdf < 0. {
                 cnv.fb.put_pixel(&p_vec.to_point(), color);
             }
@@ -33,7 +33,7 @@ pub fn sdf_circle(cnv: &mut Canvas, center: &Vec2, radius: i32, color: u32) {
     }
 }
 
-pub fn sdf_rect(cnv: &mut Canvas, a: &Vec2, b: &Vec2, radius: i32, color: u32) {
+pub fn sdf_rect(cnv: &mut Canvas, a: &Vec2, b: &Vec2, radius: &FrameBufferPoint, color: u32) {
     let s_a = FrameBufferPoint::from_ndc_vec(a, cnv.fb.width, cnv.fb.height);
     let s_b = FrameBufferPoint::from_ndc_vec(b, cnv.fb.width, cnv.fb.height);
     let center = FrameBufferPoint::new((s_a.x + s_b.x) / 2, (s_a.y + s_b.y) / 2);
@@ -47,18 +47,37 @@ pub fn sdf_rect(cnv: &mut Canvas, a: &Vec2, b: &Vec2, radius: i32, color: u32) {
                 - &Vec2::new(center.x as f32, center.y as f32))
                 .abs();
             let s_point = s_point_vec.to_point();
-            let dist_x = s_point.x - half_dimensions.x + radius;
-            let dist_y = s_point.y - half_dimensions.y + radius;
-            let dist_c = (s_point_vec - &half_dimensions.to_vec2()
-                + &Vec2::new(radius as f32, radius as f32))
-                .length();
-            let sdf_dist = if dist_x > 0 && dist_y > 0 {
-                dist_c
-            } else {
-                dist_x.max(dist_y) as f32
-            };
-            if sdf_dist < radius as f32 {
-                cnv.fb.put_pixel(&FrameBufferPoint::new(p_x, p_y), color);
+            let dist_x = s_point.x - half_dimensions.x + radius.x;
+            let dist_y = s_point.y - half_dimensions.y + radius.y;
+            let fb_point = FrameBufferPoint::new(p_x, p_y);
+            if dist_x > 0 && dist_y > 0 {
+                if ((dist_x * dist_x) as f32 / (radius.x * radius.x) as f32
+                    + (dist_y * dist_y) as f32 / (radius.y * radius.y) as f32)
+                    < 1.
+                {
+                    cnv.fb.put_pixel(&fb_point, color);
+                }
+            } else if (dist_x > 0 && radius.x > dist_x)
+                || (dist_y > 0 && radius.y > dist_y)
+                || (dist_x <= 0 && dist_y <= 0)
+            {
+                cnv.fb.put_pixel(&fb_point, color);
+            }
+        }
+    }
+}
+
+pub fn ellipse(cnv: &mut Canvas, center: &Vec2, dimensions: &FrameBufferPoint, color: u32) {
+    let s_center = FrameBufferPoint::from_ndc_vec(&center, cnv.fb.width, cnv.fb.height);
+    for x in 0..cnv.fb.width as i32 {
+        for y in 0..cnv.fb.height as i32 {
+            let x_a = x - s_center.x;
+            let y_a = y - s_center.y;
+            if ((x_a * x_a) as f32 / (dimensions.x * dimensions.x) as f32
+                + (y_a * y_a) as f32 / (dimensions.y * dimensions.y) as f32)
+                < 1.
+            {
+                cnv.fb.put_pixel(&FrameBufferPoint::new(x, y), color);
             }
         }
     }
@@ -74,8 +93,8 @@ fn draw_triangle_to_framebuffer(fb: &mut Framebuffer, a: &Vec2, b: &Vec2, c: &Ve
     let min_y = s_a.y.min(s_b.y).min(s_c.y);
     let max_y = s_a.y.max(s_b.y).max(s_c.y);
 
-    for x in min_x..max_x + 1 {
-        for y in min_y..max_y + 1 {
+    for x in min_x..max_x {
+        for y in min_y..max_y {
             let p = FrameBufferPoint::new(x, y);
             let abp = triangle_edge(&s_a, &s_b, &p);
             let cbp = triangle_edge(&s_b, &s_c, &p);

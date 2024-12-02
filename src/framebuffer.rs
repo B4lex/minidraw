@@ -1,4 +1,4 @@
-use super::math::Vec2;
+use super::math::{Vec2, VecOps};
 
 pub struct Framebuffer {
     pub width: usize,
@@ -65,12 +65,26 @@ impl FrameBufferPoint {
 
     pub fn from_ndc_vec(v: &Vec2, width: usize, height: usize) -> FrameBufferPoint {
         FrameBufferPoint::new(
-            ((v.x as f32 + 1.) * width as f32 / 2.) as i32,
-            ((-v.y as f32 + 1.) * height as f32 / 2.) as i32,
+            ((v.x + 1.) * width as f32 / 2.) as i32,
+            ((-v.y + 1.) * height as f32 / 2.) as i32,
         )
+    }
+
+    pub fn from_ndc_vec_normalized(v: &Vec2, width: usize, height: usize) -> FrameBufferPoint {
+        FrameBufferPoint::new((v.x * width as f32) as i32, (v.x * height as f32) as i32)
     }
 
     pub fn to_vec2(&self) -> Vec2 {
         Vec2::new(self.x as f32, self.y as f32)
+    }
+}
+
+impl VecOps for FrameBufferPoint {
+    fn abs(&self) -> Self {
+        todo!()
+    }
+
+    fn length(&self) -> f32 {
+        (((self.x * self.x) + (self.y * self.y)) as f32).sqrt()
     }
 }

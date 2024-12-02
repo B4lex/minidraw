@@ -57,7 +57,3 @@ pub fn lerp(a: u32, b: u32, t: f32) -> u32 {
 pub fn triangle_edge(a: &FrameBufferPoint, b: &FrameBufferPoint, p: &FrameBufferPoint) -> i32 {
     (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
 }
-
-pub fn ndc_distance_to_framebuffer(distance: f32, width: usize, height: usize) -> u32 {
-    distance
-}
